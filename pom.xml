@@ -5,6 +5,10 @@
   <version>0.1</version>
   <name>Apache Spark</name>
   <description>Desarrolo de aplicaciones Java sobre Apache Spark</description>
+  <properties>
+   <maven.compiler.source>1.8</maven.compiler.source>
+   <maven.compiler.target>1.8</maven.compiler.target>
+  </properties>
   <dependencies>
     <dependency> <!-- Spark dependency -->
       <groupId>org.apache.spark</groupId>
