@@ -4,6 +4,7 @@ Aplicaciones escritas en Java para el testeo de un cluster con Apache Spark.
 ## Compilación
 #### Dependencias
 La gestión de las dependencias se realiza a través de Maven (mirar archivo POM.xml)
+<<<<<<< HEAD
 
 + Java 1.8  - para soportar **lambda functions**
 + Scala 2.11
