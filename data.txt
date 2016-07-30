@@ -1,6 +1,0 @@
-Soy
-Apache
-Spark
-y
-funciono
-correctamente
