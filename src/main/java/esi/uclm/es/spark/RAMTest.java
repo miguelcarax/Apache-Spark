@@ -18,7 +18,10 @@ public class RAMTest {
 	/* Colores para la salida por terminal */
 	public static final String ANSI_RESET = "\u001B[0m";
 	public static final String ANSI_YELLOW = "\u001B[33m";
-		
+	
+	/*
+	 * Imprime mensajes por terminal con colores.
+	 */
 	public static void putInfoMessage(String... messages) {
 		System.out.println(ANSI_YELLOW + "[INFO] " + 
 				 "------------------------------------------------------------------------"
@@ -47,20 +50,15 @@ public class RAMTest {
 		
 		SparkConf conf = new SparkConf().
 				setAppName("RAM Test").
-				setMaster("local[4]"); // Lo ejecutamos en local para la prueba
+				setMaster("local[4]"); // Lo ejecutamos en local para la prueba con 4 cores
 		JavaSparkContext sc = new JavaSparkContext(conf);
 		
 		ArrayList<Long> randomListNumbers = new ArrayList<>();
 		JavaRDD<Long> auxRDD = sc.emptyRDD();
 		JavaRDD<Long> finalRDD = sc.emptyRDD();
-		float size = 0, finalSize = 0;
-		long totalJavaMemory = 0, maxJavaMemory = 0, actualMemory = 0;
-		
-		finalRDD.persist(StorageLevel.MEMORY_AND_DISK());
 		
 		try 
 		{
-			
 			for (long i=0; i < RDDs; i++)
 			{	
 				for (long k=0; k < elementsPerRDD; k++) 
@@ -70,18 +68,16 @@ public class RAMTest {
 				
 				auxRDD = sc.parallelize(randomListNumbers);
 				finalRDD = finalRDD.union(auxRDD);
+				
 				/* Le dice a Spark que si no cabe en la memoria que lo guarde en el disco */
 				finalRDD.persist(StorageLevel.MEMORY_AND_DISK());
 				finalRDD.count();
-				//finalRDD.collect();
+				
 				/* Clean aux structures */
 				auxRDD.unpersist(); // Lo libera de la memoria
 				auxRDD = sc.emptyRDD();
 				randomListNumbers.clear();
-				
 			}
-			actualMemory = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
-			putInfoMessage("Actual Java Mb usage: " + actualMemory / 1000000 + " Mb.");
 			putInfoMessage(String.format("RDD has %d Mb size.",  SizeEstimator.estimate(finalRDD) / 1000000),
 					String.format("RDD has %d million elements.", finalRDD.count() / 1000000 ));
 			
