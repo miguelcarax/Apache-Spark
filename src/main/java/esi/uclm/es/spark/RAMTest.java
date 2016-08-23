@@ -1,14 +1,16 @@
+/*
+ * Lectura importante para entender el manejo de memoria en Apache Spark:
+ *  -> https://0x0fff.com/spark-memory-management/
+ */
+
 package esi.uclm.es.spark;
 
 import java.util.ArrayList;
 
 import org.apache.spark.SparkConf;
-import org.apache.spark.SparkContext;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.storage.RDDInfo;
 import org.apache.spark.storage.StorageLevel;
-import org.apache.spark.storage.StorageStatus;
 import org.apache.spark.util.SizeEstimator;
 
 public class RAMTest {
@@ -16,49 +18,76 @@ public class RAMTest {
 	/* Colores para la salida por terminal */
 	public static final String ANSI_RESET = "\u001B[0m";
 	public static final String ANSI_YELLOW = "\u001B[33m";
-	
-	public static final String INFO = String.format("%s%s %s", ANSI_YELLOW, "[INFO]" , ANSI_RESET);
-	
-	public static void putInfoMessage(String message) {
-		System.out.println(INFO+"------------------------------------------------------------------------");
-		System.out.println(INFO + message);
-		System.out.println(INFO+"------------------------------------------------------------------------");
+		
+	public static void putInfoMessage(String... messages) {
+		System.out.println(ANSI_YELLOW + "[INFO] " + 
+				 "------------------------------------------------------------------------"
+				+ ANSI_RESET);
+		for (String message : messages) 
+		{
+			System.out.println(ANSI_YELLOW + "[INFO] "+ ANSI_RESET +  message);
+		}
+		System.out.println(ANSI_YELLOW + "[INFO] " + 
+				"------------------------------------------------------------------------"
+				+ ANSI_RESET);
 	}
 	
 	public static void main(String[] args) {
 		putInfoMessage("STARTING EXECUTION");
 		
-		/* Número de iteraciones pasadas por argumento (por defecto 1.000.000). */
-		int iterations = (args.length >= 1) ? Integer.parseInt(args[0]) : 1000000;
-		int multiply = (args.length == 2) ? Integer.parseInt(args[1]) : 1;
+		/*
+		 * Creamos RDD intermedios y los vamos añadiendo al global para no colapsar la memoria creando
+		 * la lista de  Longs de Java, ya que no queremos que Java ocupe la memoria que necesita Spark.
+		 */
+		
+		/* Número de elementos de cada RDD (en millones) pasados por argumentos (por defecto 1.000.000). */
+		int elementsPerRDD = (args.length >= 1) ? Integer.parseInt(args[0]) * 1000000 : 1000000;
+		/* Cuantas veces se va a añadir ese RDD al RDD final. */
+		int RDDs = (args.length > 1) ? Integer.parseInt(args[1]) : 1;
 		
 		SparkConf conf = new SparkConf().
 				setAppName("RAM Test").
-				setMaster("local");
+				setMaster("local[4]"); // Lo ejecutamos en local para la prueba
 		JavaSparkContext sc = new JavaSparkContext(conf);
 		
 		ArrayList<Long> randomListNumbers = new ArrayList<>();
+		JavaRDD<Long> auxRDD = sc.emptyRDD();
+		JavaRDD<Long> finalRDD = sc.emptyRDD();
+		float size = 0, finalSize = 0;
+		long totalJavaMemory = 0, maxJavaMemory = 0, actualMemory = 0;
+		
+		finalRDD.persist(StorageLevel.MEMORY_AND_DISK());
 		
 		try 
 		{
-			for (long i=0; i < iterations * multiply; i++)
-			{
-				randomListNumbers.add(i);
+			
+			for (long i=0; i < RDDs; i++)
+			{	
+				for (long k=0; k < elementsPerRDD; k++) 
+				{
+					randomListNumbers.add(k);
+				}
+				
+				auxRDD = sc.parallelize(randomListNumbers);
+				finalRDD = finalRDD.union(auxRDD);
+				/* Le dice a Spark que si no cabe en la memoria que lo guarde en el disco */
+				finalRDD.persist(StorageLevel.MEMORY_AND_DISK());
+				finalRDD.count();
+				//finalRDD.collect();
+				/* Clean aux structures */
+				auxRDD.unpersist(); // Lo libera de la memoria
+				auxRDD = sc.emptyRDD();
+				randomListNumbers.clear();
+				
 			}
-			
-			JavaRDD<Long> numsRDD = sc.parallelize(randomListNumbers, 5);
-			randomListNumbers.clear();
-			numsRDD.cache(); // cache() is lazy operation
-			//numsRDD.count();
-			float size = SizeEstimator.estimate(numsRDD);
-			// Bytes => Gbytese
-			size = size / 1000 / 1000 / 1000;
-			
-			putInfoMessage("Size is: " + size + " Gb.");
+			actualMemory = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+			putInfoMessage("Actual Java Mb usage: " + actualMemory / 1000000 + " Mb.");
+			putInfoMessage(String.format("RDD has %d Mb size.",  SizeEstimator.estimate(finalRDD) / 1000000),
+					String.format("RDD has %d million elements.", finalRDD.count() / 1000000 ));
 			
 		} catch (Exception e) 
 		{
-			System.out.println("[ERROR] " + e.toString());
+			putInfoMessage(e.toString());
 			
 		} finally 
 		{
