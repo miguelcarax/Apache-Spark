@@ -9,34 +9,50 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.storage.RDDInfo;
 import org.apache.spark.storage.StorageLevel;
 import org.apache.spark.storage.StorageStatus;
+import org.apache.spark.util.SizeEstimator;
 
 public class RAMTest {
-
+	
+	/* Colores para la salida por terminal */
+	public static final String ANSI_RESET = "\u001B[0m";
+	public static final String ANSI_YELLOW = "\u001B[33m";
+	
+	public static final String INFO = String.format("%s%s %s", ANSI_YELLOW, "[INFO]" , ANSI_RESET);
+	
+	public static void putInfoMessage(String message) {
+		System.out.println(INFO + message);
+		System.out.println(INFO+"------------------------------------------------------------------------");
+	}
+	
 	public static void main(String[] args) {
+		System.out.println(INFO+"------------------------------------------------------------------------");
+		
+		putInfoMessage("STARTING EXECUTION");
 		/* Número de iteraciones pasadas por argumento (por defecto 1.000.000). */
-		int iteraciones = (args.length == 1) ? Integer.parseInt(args[0]) : 1000000;
+		int iterations = (args.length == 1) ? Integer.parseInt(args[0]) : 1000000;
 		
 		SparkConf conf = new SparkConf().
 				setAppName("RAM Test").
 				setMaster("local");
 		JavaSparkContext sc = new JavaSparkContext(conf);
 		
-		ArrayList<Long> listNumAleatorios = new ArrayList<>();
+		ArrayList<Long> randomListNumbers = new ArrayList<>();
 		
 		try 
 		{
-			for (long i=0; i < iteraciones; i++)
+			for (long i=0; i < iterations; i++)
 			{
-				listNumAleatorios.add(i);
+				randomListNumbers.add(i);
 			}
 			
-			JavaRDD<Long> numsRDD = sc.parallelize(listNumAleatorios);
+			JavaRDD<Long> numsRDD = sc.parallelize(randomListNumbers, 5);
 			numsRDD.cache(); // cache() is lazy operation
-			numsRDD.count();
+			//numsRDD.count();
+			float size = SizeEstimator.estimate(numsRDD);
+			// Bytes => Gbytes
+			size = size / 1000 / 1000 / 1000;
 			
-			System.out.println("--------------------------------------------------------------------");
-			System.out.println(sc.sc().getRDDStorageInfo()[0]);
-			System.out.println("--------------------------------------------------------------------");
+			putInfoMessage("Size is: " + size + " Gb.");
 			
 		} catch (Exception e) 
 		{
