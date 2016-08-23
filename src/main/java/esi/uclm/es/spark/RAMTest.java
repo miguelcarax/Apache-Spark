@@ -20,16 +20,17 @@ public class RAMTest {
 	public static final String INFO = String.format("%s%s %s", ANSI_YELLOW, "[INFO]" , ANSI_RESET);
 	
 	public static void putInfoMessage(String message) {
+		System.out.println(INFO+"------------------------------------------------------------------------");
 		System.out.println(INFO + message);
 		System.out.println(INFO+"------------------------------------------------------------------------");
 	}
 	
 	public static void main(String[] args) {
-		System.out.println(INFO+"------------------------------------------------------------------------");
-		
 		putInfoMessage("STARTING EXECUTION");
+		
 		/* Número de iteraciones pasadas por argumento (por defecto 1.000.000). */
-		int iterations = (args.length == 1) ? Integer.parseInt(args[0]) : 1000000;
+		int iterations = (args.length >= 1) ? Integer.parseInt(args[0]) : 1000000;
+		int multiply = (args.length == 2) ? Integer.parseInt(args[1]) : 1;
 		
 		SparkConf conf = new SparkConf().
 				setAppName("RAM Test").
@@ -40,16 +41,17 @@ public class RAMTest {
 		
 		try 
 		{
-			for (long i=0; i < iterations; i++)
+			for (long i=0; i < iterations * multiply; i++)
 			{
 				randomListNumbers.add(i);
 			}
 			
 			JavaRDD<Long> numsRDD = sc.parallelize(randomListNumbers, 5);
+			randomListNumbers.clear();
 			numsRDD.cache(); // cache() is lazy operation
 			//numsRDD.count();
 			float size = SizeEstimator.estimate(numsRDD);
-			// Bytes => Gbytes
+			// Bytes => Gbytese
 			size = size / 1000 / 1000 / 1000;
 			
 			putInfoMessage("Size is: " + size + " Gb.");
