@@ -54,32 +54,34 @@ public class RAMTest {
 		JavaSparkContext sc = new JavaSparkContext(conf);
 		
 		ArrayList<Long> randomListNumbers = new ArrayList<>();
+		ArrayList<JavaRDD<Long>> listOfRDDs = new ArrayList<>();
 		JavaRDD<Long> auxRDD = sc.emptyRDD();
-		JavaRDD<Long> finalRDD = sc.emptyRDD();
 		
 		try 
 		{
+			/* Creo la lista de elemento una vez */
+			for (long k=0; k < elementsPerRDD; k++) 
+			{
+				randomListNumbers.add(k);
+			}
+			
+			/* Creo X RDDs */
 			for (long i=0; i < RDDs; i++)
 			{	
-				for (long k=0; k < elementsPerRDD; k++) 
-				{
-					randomListNumbers.add(k);
-				}
 				
 				auxRDD = sc.parallelize(randomListNumbers);
-				finalRDD = finalRDD.union(auxRDD);
-				
-				/* Le dice a Spark que si no cabe en la memoria que lo guarde en el disco */
-				finalRDD.persist(StorageLevel.MEMORY_AND_DISK());
-				finalRDD.count();
+				auxRDD.cache();
+				auxRDD.count();
+				listOfRDDs.add(auxRDD);
 				
 				/* Clean aux structures */
-				auxRDD.unpersist(); // Lo libera de la memoria
-				auxRDD = sc.emptyRDD();
-				randomListNumbers.clear();
+				//auxRDD.unpersist(); // Lo libera de la memoria
+				//auxRDD = sc.emptyRDD();
 			}
-			putInfoMessage(String.format("RDD has %d Mb size.",  SizeEstimator.estimate(finalRDD) / 1000000),
-					String.format("RDD has %d million elements.", finalRDD.count() / 1000000 ));
+			putInfoMessage(String.format("RDD has %d Mb size.",  
+					SizeEstimator.estimate(auxRDD) / 1000000 * RDDs),
+					String.format("RDD has %d million elements.", 
+							auxRDD.count() / 1000000 * RDDs));
 			
 		} catch (Exception e) 
 		{
