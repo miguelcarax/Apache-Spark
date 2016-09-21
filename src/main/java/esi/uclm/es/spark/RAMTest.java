@@ -50,7 +50,7 @@ public class RAMTest {
 		
 		SparkConf conf = new SparkConf().
 				setAppName("RAM Test").
-				setMaster("local[4]"); // Lo ejecutamos en local para la prueba con 4 cores
+				setMaster("spark://tales.local:7077"); // Lo ejecutamos en local para la prueba con 4 cores
 		JavaSparkContext sc = new JavaSparkContext(conf);
 		
 		ArrayList<Long> randomListNumbers = new ArrayList<>();
@@ -69,7 +69,7 @@ public class RAMTest {
 			for (long i=0; i < RDDs; i++)
 			{	
 				
-				auxRDD = sc.parallelize(randomListNumbers);
+				auxRDD = sc.parallelize(randomListNumbers, 3000);
 				auxRDD.cache();
 				auxRDD.count();
 				listOfRDDs.add(auxRDD);
@@ -78,10 +78,9 @@ public class RAMTest {
 				//auxRDD.unpersist(); // Lo libera de la memoria
 				//auxRDD = sc.emptyRDD();
 			}
-			putInfoMessage(String.format("RDD has %d Mb size.",  
-					SizeEstimator.estimate(auxRDD) / 1000000 * RDDs),
-					String.format("RDD has %d million elements.", 
-							auxRDD.count() / 1000000 * RDDs));
+			putInfoMessage(String.format(
+					"RDD has %d Mb size.", SizeEstimator.estimate(auxRDD) / 1000000 * RDDs),
+					String.format("RDD has %d million elements.", auxRDD.count() / 1000000 * RDDs));
 			
 		} catch (Exception e) 
 		{
