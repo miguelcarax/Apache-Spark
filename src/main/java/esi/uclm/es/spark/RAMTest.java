@@ -69,7 +69,7 @@ public class RAMTest {
 			for (long i=0; i < RDDs; i++)
 			{	
 				
-				auxRDD = sc.parallelize(randomListNumbers, 3000);
+				auxRDD = sc.parallelize(randomListNumbers, 16);
 				auxRDD.cache();
 				auxRDD.count();
 				listOfRDDs.add(auxRDD);
